@@ -8,10 +8,8 @@ import com.angelov00.server.User;
 
 public class CommandInvoker {
     private final Map<String, Command> commands;
-    private final ConcurrentHashMap<String, User> users;
 
     public CommandInvoker(ConcurrentHashMap<String, User> users) {
-        this.users = users;
         this.commands = new HashMap<>();
         commands.put("register", new RegisterCommand(users));
         commands.put("unregister", new UnregisterCommand(users));

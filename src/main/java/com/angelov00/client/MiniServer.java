@@ -2,6 +2,7 @@ package com.angelov00.client;
 
 import java.io.*;
 import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -83,7 +84,7 @@ public class MiniServer {
     }
 
     private void sendResponse(OutputStream out, String response) throws IOException {
-        out.write((response + "\n").getBytes("UTF-8"));
+        out.write((response + "\n").getBytes(StandardCharsets.UTF_8));
         out.flush();
     }
 

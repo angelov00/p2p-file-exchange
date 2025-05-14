@@ -146,7 +146,7 @@ public class Peer {
                     return "Error: Usage: " + cmd;
                 }
                 response = sendServerCommand(commandStr);
-                if (cmd.equals("list-users") && response != null && !response.equals("No users available")) {
+                if (cmd.equals("list-users") && !response.equals("No users available")) {
                     updateUsersTxt(response);
                 }
                 return response;
