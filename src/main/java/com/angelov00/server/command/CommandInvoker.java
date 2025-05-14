@@ -16,7 +16,7 @@ public class CommandInvoker {
         commands.put("register", new RegisterCommand(users));
         commands.put("unregister", new UnregisterCommand(users));
         commands.put("list-files", new ListFilesCommand(users));
-        commands.put("download", new DownloadCommand());
+        commands.put("list-users", new ListUsersCommand(users));
     }
 
     public String handleCommand(String commandStr, InetSocketAddress clientAddress) {
@@ -49,8 +49,6 @@ public class CommandInvoker {
             case "list-files":
             case "list-users":
                 break;
-            case "download":
-                return command.execute(params);
             default:
                 return "Error: Unknown command";
         }
