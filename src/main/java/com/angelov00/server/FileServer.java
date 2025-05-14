@@ -1,88 +1,122 @@
 package com.angelov00.server;
 
 import com.angelov00.server.command.CommandInvoker;
-
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
-import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.*;
+import java.net.*;
+import java.nio.*;
+import java.nio.channels.*;
+import java.nio.charset.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.logging.*;
 
 public class FileServer {
     public static final int SERVER_PORT = 7777;
     private static final String SERVER_HOST = "localhost";
     private static final int BUFFER_SIZE = 1024;
+    private static final Logger LOGGER = Logger.getLogger(FileServer.class.getName());
     private final ConcurrentHashMap<String, User> users = new ConcurrentHashMap<>();
     private final CommandInvoker commandInvoker = new CommandInvoker(users);
 
     public static void main(String[] args) {
+        new FileServer().start();
+    }
 
-        try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
-
+    private void start() {
+        setupLogger();
+        try (Selector selector = Selector.open();
+             ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
             serverSocketChannel.bind(new InetSocketAddress(SERVER_HOST, SERVER_PORT));
             serverSocketChannel.configureBlocking(false);
-
-            Selector selector = Selector.open();
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
 
-            ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+            System.out.println("Server started on port " + SERVER_PORT);
 
             while (true) {
                 int readyChannels = selector.select();
                 if (readyChannels == 0) {
-                    // select() is blocking but may still return with 0, check javadoc
                     continue;
                 }
 
-                Set<SelectionKey> selectedKeys = selector.selectedKeys();
-                Iterator<SelectionKey> keyIterator = selectedKeys.iterator();
-
+                Iterator<SelectionKey> keyIterator = selector.selectedKeys().iterator();
                 while (keyIterator.hasNext()) {
                     SelectionKey key = keyIterator.next();
-                    if (key.isReadable()) {
-                        SocketChannel sc = (SocketChannel) key.channel();
-
-                        buffer.clear();
-                        int r = sc.read(buffer);
-                        if (r < 0) {
-                            System.out.println("Client has closed the connection");
-                            sc.close();
-                            continue;
+                    try {
+                        if (key.isAcceptable()) {
+                            acceptClient(selector, serverSocketChannel);
+                        } else if (key.isReadable()) {
+                            readClient(key);
                         }
-                        buffer.flip();
-
-                        String receivedData = new String(buffer.array(), 0, buffer.limit(), StandardCharsets.UTF_8);
-                        String peerIP = sc.getRemoteAddress().toString();
-
-                        System.out.println("Received " + receivedData + " from " + peerIP);
-
-                        String response = commandInvoker.handleCommand(receivedData);
-
-                        buffer.clear();
-                        buffer.put(response.getBytes(StandardCharsets.UTF_8));
-                        buffer.flip();
-                        sc.write(buffer);
-
-                    } else if (key.isAcceptable()) {
-                        ServerSocketChannel sockChannel = (ServerSocketChannel) key.channel();
-                        SocketChannel accept = sockChannel.accept();
-                        accept.configureBlocking(false);
-                        accept.register(selector, SelectionKey.OP_READ);
+                    } catch (IOException e) {
+                        logError("Error processing key: " + key, e);
+                        closeKey(key);
                     }
-
                     keyIterator.remove();
                 }
-
             }
-
         } catch (IOException e) {
-            throw new RuntimeException("There is a problem with the server socket", e);
+            logError("Server startup failed", e);
+            System.out.println("Unable to start server. Check logs at logs.txt");
+        }
+    }
+
+    private void acceptClient(Selector selector, ServerSocketChannel serverChannel) throws IOException {
+        SocketChannel client = serverChannel.accept();
+        client.configureBlocking(false);
+        client.register(selector, SelectionKey.OP_READ);
+        LOGGER.info("Accepted client: " + client.getRemoteAddress());
+    }
+
+    private void readClient(SelectionKey key) throws IOException {
+        SocketChannel client = (SocketChannel) key.channel();
+        ByteBuffer buffer = ByteBuffer.allocate(BUFFER_SIZE);
+
+        int bytesRead = client.read(buffer);
+        if (bytesRead < 0) {
+            LOGGER.info("Client closed connection: " + client.getRemoteAddress());
+            closeKey(key);
+            return;
+        }
+
+        buffer.flip();
+        String receivedData = StandardCharsets.UTF_8.decode(buffer).toString().trim();
+        LOGGER.info("Received: " + receivedData + " from " + client.getRemoteAddress());
+
+        String response = commandInvoker.handleCommand(receivedData, (InetSocketAddress) client.getRemoteAddress());
+        buffer.clear();
+        buffer.put((response + "\n").getBytes(StandardCharsets.UTF_8));
+        buffer.flip();
+        client.write(buffer);
+    }
+
+    private void closeKey(SelectionKey key) {
+        try {
+            SocketChannel client = (SocketChannel) key.channel();
+            client.close();
+            key.cancel();
+            users.entrySet().removeIf(entry -> entry.getValue().getFiles().isEmpty());
+            LOGGER.info("Closed connection: " + client.getRemoteAddress());
+        } catch (IOException e) {
+            logError("Error closing connection", e);
+        }
+    }
+
+    private void setupLogger() {
+        try {
+            FileHandler fileHandler = new FileHandler("logs.txt", true);
+            fileHandler.setFormatter(new SimpleFormatter());
+            LOGGER.addHandler(fileHandler);
+            LOGGER.setLevel(Level.ALL);
+            LOGGER.setUseParentHandlers(false);
+        } catch (IOException e) {
+            System.err.println("Failed to setup logger: " + e.getMessage());
+        }
+    }
+
+    private void logError(String message, Exception e) {
+        LOGGER.severe(message + ": " + e.getMessage());
+        for (StackTraceElement ste : e.getStackTrace()) {
+            LOGGER.severe(ste.toString());
         }
     }
 }

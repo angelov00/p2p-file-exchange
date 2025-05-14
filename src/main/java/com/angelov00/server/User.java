@@ -10,7 +10,7 @@ public class User {
     private int port;
     private Set<String> files;
 
-    User(String username, String ip, int port) {
+    public User(String username, String ip, int port) {
         this.username = username;
         this.ip = ip;
         this.port = port;
