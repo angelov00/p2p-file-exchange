@@ -84,7 +84,7 @@ public class FileServer {
 
         String response = commandInvoker.handleCommand(receivedData, (InetSocketAddress) client.getRemoteAddress());
         buffer.clear();
-        buffer.put((response + "\n").getBytes(StandardCharsets.UTF_8));
+        buffer.put((response).getBytes(StandardCharsets.UTF_8));
         buffer.flip();
         client.write(buffer);
     }
