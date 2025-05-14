@@ -2,20 +2,24 @@ package com.angelov00.client;
 
 import java.io.*;
 import java.net.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MiniServer {
     private ServerSocket serverSocket;
-    private int port;
     private volatile boolean running;
+    private final ExecutorService threadPool;
+
+    private static final int MAX_CLIENTS = 5;
 
     public MiniServer() {
         this.running = true;
+        this.threadPool = Executors.newFixedThreadPool(MAX_CLIENTS);
     }
 
     public int startAndGetPort() throws IOException {
         serverSocket = new ServerSocket(0); // Автоматичен порт
-        port = serverSocket.getLocalPort();
-        return port;
+        return serverSocket.getLocalPort();
     }
 
     public void start() {
@@ -23,7 +27,15 @@ public class MiniServer {
             while (running) {
                 try (Socket client = serverSocket.accept()) {
                     System.out.println("Accepted client connection from " + client.getRemoteSocketAddress());
-                    handleClient(client);
+
+                    threadPool.submit(() -> {
+                        try {
+                            handleClient(client);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+
                 } catch (IOException e) {
                     if (running) {
                         System.err.println("Error accepting client: " + e.getMessage());
