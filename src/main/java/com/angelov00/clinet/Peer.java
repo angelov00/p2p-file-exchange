@@ -47,8 +47,7 @@ public class Peer {
                 String reply = new String(byteArray, "UTF-8"); // buffer drain
 
                 // if the buffer is a non-direct one, it has a wrapped array and we can get it
-                //String reply = new String(buffer.array(), 0, buffer.position(), "UTF-8"); // buffer drain
-
+                // String reply = new String(buffer.array(), 0, buffer.position(), "UTF-8"); // buffer drain
                 System.out.println("The server replied <" + reply + ">");
             }
 

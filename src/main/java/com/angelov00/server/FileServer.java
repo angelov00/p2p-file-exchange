@@ -1,5 +1,7 @@
 package com.angelov00.server;
 
+import com.angelov00.server.command.CommandInvoker;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -7,6 +9,7 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -16,6 +19,9 @@ public class FileServer {
     private static final int BUFFER_SIZE = 1024;
 
     public static void main(String[] args) {
+
+        CommandInvoker commandInvoker = new CommandInvoker();
+
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
 
             serverSocketChannel.bind(new InetSocketAddress(SERVER_HOST, SERVER_PORT));
@@ -48,6 +54,17 @@ public class FileServer {
                             sc.close();
                             continue;
                         }
+                        buffer.flip();
+
+                        String receivedData = new String(buffer.array(), 0, buffer.limit(), StandardCharsets.UTF_8);
+                        String peerIP = sc.getRemoteAddress().toString();
+
+                        System.out.println("Received " + receivedData + " from " + peerIP);
+
+                        String response = commandInvoker.handleCommand(receivedData);
+
+                        buffer.clear();
+                        buffer.put(response.getBytes(StandardCharsets.UTF_8));
                         buffer.flip();
                         sc.write(buffer);
 
