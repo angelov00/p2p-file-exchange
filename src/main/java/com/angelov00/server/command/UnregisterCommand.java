@@ -22,6 +22,14 @@ public class UnregisterCommand implements Command {
             return "Error: Missing parameters for unregister";
         }
 
+        if (username.trim().isEmpty()) {
+            return "Error: Username cannot be empty";
+        }
+
+        if (fileList.trim().isEmpty()) {
+            return "Error: File list cannot be empty";
+        }
+
         User user = users.get(username);
         if(user == null) {
             return "Error: User not found";
