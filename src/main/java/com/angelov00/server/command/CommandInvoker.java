@@ -20,7 +20,7 @@ public class CommandInvoker {
     }
 
     public String handleCommand(String commandStr, InetSocketAddress clientAddress) {
-        String[] parts = commandStr.trim().split("\\s+", 3);
+        String[] parts = commandStr.trim().split("\\s+", 4);
         if (parts.length == 0) {
             return "Error: Empty command";
         }
@@ -40,11 +40,16 @@ public class CommandInvoker {
         switch (cmd) {
             case "register":
             case "unregister":
-                if (parts.length < 3) {
-                    return "Error: Usage: " + cmd + " <user> <file1,file2,...>";
+                if (parts.length < 4) {
+                    return "Error: Usage: " + cmd + " <user> <file1,file2,...> <port>";
                 }
                 params.put("username", parts[1]);
                 params.put("fileList", parts[2]);
+                try {
+                    params.put("port", Integer.parseInt(parts[3])); // Използваме коректния порт
+                } catch (NumberFormatException e) {
+                    return "Error: Invalid port number";
+                }
                 break;
             case "list-files":
             case "list-users":
