@@ -12,15 +12,16 @@ import java.nio.channels.SocketChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class FileServer {
     public static final int SERVER_PORT = 7777;
     private static final String SERVER_HOST = "localhost";
     private static final int BUFFER_SIZE = 1024;
+    private final ConcurrentHashMap<String, User> users = new ConcurrentHashMap<>();
+    private final CommandInvoker commandInvoker = new CommandInvoker(users);
 
     public static void main(String[] args) {
-
-        CommandInvoker commandInvoker = new CommandInvoker();
 
         try (ServerSocketChannel serverSocketChannel = ServerSocketChannel.open()) {
 
